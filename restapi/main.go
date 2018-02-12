@@ -94,13 +94,17 @@ func artistById(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	var err error
 	cfg := db.Config{
 		Host:     "localhost",
 		Port:     "5432",
 		User:     os.Getenv("DB_USER"),
 		Password: os.Getenv("DB_PASSWORD"),
 		Database: os.Getenv("DB_DATABASE")}
-	db.DbConn, _ = db.New(cfg)
+	db.DbConn, err = db.New(cfg)
+	if err != nil {
+		log.Print(err)
+	}
 	defer db.DbConn.Close()
 	r := mux.NewRouter()
 	r.HandleFunc("/songs", songs).Methods("GET")
