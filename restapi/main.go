@@ -13,7 +13,7 @@ import (
 )
 
 func upload(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
 	r.ParseMultipartForm(32 << 20)
 	m := r.MultipartForm
 	files := m.File["uploadfile"]
@@ -29,7 +29,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func songs(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
 	w.Header().Set("Content-Type", "application/json")
 	// songs := models.GetSongs()
 	songs := models.GetSongsAll()
@@ -41,7 +41,7 @@ func songs(w http.ResponseWriter, r *http.Request) {
 	w.Write(js)
 }
 func artists(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
 	w.Header().Set("Content-Type", "application/json")
 	artists := models.GetArtists()
 	js, err := json.Marshal(artists)
@@ -52,7 +52,7 @@ func artists(w http.ResponseWriter, r *http.Request) {
 	w.Write(js)
 }
 func albums(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
 	w.Header().Set("Content-Type", "application/json")
 	albums := models.GetAlbums()
 	js, err := json.Marshal(albums)
@@ -64,7 +64,7 @@ func albums(w http.ResponseWriter, r *http.Request) {
 }
 
 func albumById(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	album, _ := models.GetAlbumById(vars["id"])
@@ -78,7 +78,7 @@ func albumById(w http.ResponseWriter, r *http.Request) {
 }
 
 func artistById(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	artist := models.GetArtistById(vars["id"])
@@ -86,6 +86,36 @@ func artistById(w http.ResponseWriter, r *http.Request) {
 	artist.Albums= models.GetAlbumsByArtistId(vars["id"])
 	artist.Songs = models.GetSongsByArtistId(vars["id"])
 	js, err := json.Marshal(artist)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write(js)
+}
+
+type Search struct {
+	Term string
+}
+
+func search(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
+	w.Header().Set("Content-Type", "application/json")
+
+	var t Search
+	err := json.NewDecoder(r.Body).Decode(&t)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	artists := models.ArtistsSearch(t.Term)
+	albums := models.AlbumsSearch(t.Term)
+	songs := models.SongsSearch(t.Term)
+	all := make(map[string]interface{})
+	all["artists"] = artists
+	all["albums"] = albums
+	all["songs"] = songs
+	js, err := json.Marshal(all)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -113,6 +143,7 @@ func main() {
 	r.HandleFunc("/albums", albums).Methods("GET")
 	r.HandleFunc("/album/{id}", albumById).Methods("GET")
 	r.HandleFunc("/upload", upload).Methods("POST")
+	r.HandleFunc("/search", search).Methods("POST")
 	r.PathPrefix("/music/").Handler(http.StripPrefix("/music/", http.FileServer(http.Dir("music"))))
 	log.Fatal(http.ListenAndServe(":8000", r))
 }

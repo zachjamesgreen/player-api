@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"strconv"
+	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
@@ -157,7 +158,6 @@ func GetSongsByArtistId(id string) (rows []SongAll){
 		log.Print(err)
 		return
 	}
-	log.Printf("Got Songs")
 	return
 }
 
@@ -202,7 +202,6 @@ func GetSongsByAlbumId(id string) (rows []SongAll){
 		log.Print(err)
 		return
 	}
-	log.Printf("Got Songs")
 	return
 }
 
@@ -256,6 +255,33 @@ func GetSongsAll() (songs []SongAll) {
 	iterator, err := db.DbConn.Query(qry)
 	if err != nil {
 		log.Print(err)
+		return
+	}
+	defer iterator.Close()
+	for iterator.Next() {
+		var song = SongAll{}
+		err = iterator.Scan(&song.Id, &song.Title, &song.FileType, &song.FileName, &song.AlbumId, &song.ArtistId, &song.AlbumTitle, &song.ArtistName)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		songs = append(songs, song)
+	}
+	return
+}
+
+func SongsSearch(term string) (songs []SongAll) {
+	qry := fmt.Sprint(`
+		SELECT songs.id, songs.title, songs.file_type, songs.file_name, songs.albumId, songs.artistId, albums.title as album_title, artists.name
+		from songs
+		inner join albums on songs.albumId = albums.id
+		inner join artists on songs.artistId = artists.id
+		WHERE songs.title ILIKE '`, term, "%'")
+
+	iterator, err := db.DbConn.Query(qry)
+	if err != nil {
+ 		log.Print(err)
 		return
 	}
 	defer iterator.Close()

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"strconv"
+	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
@@ -54,7 +55,6 @@ func GetArtistById(id string) (row ArtistRow) {
 	i, _ := strconv.Atoi(id)
 
 	const qry = "SELECT * FROM artists WHERE id = $1 LIMIT 1"
-	log.Print(qry)
 
 	err := db.DbConn.QueryRow(qry, i).Scan(&row.Id, &row.Name)
 	if err != nil {
@@ -93,6 +93,28 @@ func GetArtists() (artists []ArtistRow) {
 	iterator, err := db.DbConn.Query(qry)
 	if err != nil {
 		log.Print(err)
+		return
+	}
+	defer iterator.Close()
+	for iterator.Next() {
+		var artist = ArtistRow{}
+		err = iterator.Scan(&artist.Id, &artist.Name)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		artists = append(artists, artist)
+	}
+	return
+}
+
+func ArtistsSearch(term string) (artists []ArtistRow) {
+	qry := fmt.Sprint("SELECT * FROM artists WHERE name ILIKE '", term, "%'")
+
+	iterator, err := db.DbConn.Query(qry)
+	if err != nil {
+ 		log.Print(err)
 		return
 	}
 	defer iterator.Close()

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"strconv"
+	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
@@ -110,7 +111,6 @@ func GetAlbumsByArtistId(id string)(rows []AlbumRow) {
 		log.Print(err)
 		return
 	}
-	log.Printf("Got Albums")
 	return
 }
 
@@ -135,8 +135,6 @@ func GetAlbumByTitle(title string) (row AlbumRow, err error) {
 	return
 }
 
-func GetAlbumsByArtist() {}
-
 func GetAlbums() (albums []AlbumRow) {
 	const qry = `
 		SELECT id, title, year, artistId
@@ -145,6 +143,28 @@ func GetAlbums() (albums []AlbumRow) {
 	iterator, err := db.DbConn.Query(qry)
 	if err != nil {
 		log.Print(err)
+		return
+	}
+	defer iterator.Close()
+	for iterator.Next() {
+		var album = AlbumRow{}
+		err = iterator.Scan(&album.Id, &album.Title, &album.Year, &album.ArtistId)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+
+		albums = append(albums, album)
+	}
+	return
+}
+
+func AlbumsSearch(term string) (albums []AlbumRow) {
+	qry := fmt.Sprint("SELECT * FROM albums WHERE title ILIKE '", term, "%'")
+
+	iterator, err := db.DbConn.Query(qry)
+	if err != nil {
+ 		log.Print(err)
 		return
 	}
 	defer iterator.Close()
